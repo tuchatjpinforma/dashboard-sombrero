@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { revalidateTag } from "next/cache";
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,6 +58,9 @@ export async function createUserAction(input: {
 
   if (upsertError) throw new Error(upsertError.message);
 
+  revalidateTag("users-page-data");
+  revalidateTag("topbar-notifications");
+
   return { id: data.user.id };
 }
 
@@ -64,6 +68,7 @@ export async function setUserActiveAction(input: { id: string; is_active: boolea
   const supabase = getAdminClient();
   const { error } = await supabase.from("profiles").update({ is_active: input.is_active }).eq("id", input.id);
   if (error) throw new Error(error.message);
+  revalidateTag("users-page-data");
 }
 
 export async function deleteUserAction(input: { id: string }) {
@@ -72,4 +77,6 @@ export async function deleteUserAction(input: { id: string }) {
   if (profileError) throw new Error(profileError.message);
   const { error } = await supabase.auth.admin.deleteUser(input.id);
   if (error) throw new Error(error.message);
+  revalidateTag("users-page-data");
+  revalidateTag("topbar-notifications");
 }

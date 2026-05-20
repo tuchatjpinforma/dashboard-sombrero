@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description: "Admin dashboard para monitoreo de bots de WhatsApp",
   icons: {
     icon: [{ url: "/logo_sombrerito_check.png", type: "image/png" }],
+    shortcut: [{ url: "/logo_sombrerito_check.png", type: "image/png" }],
     apple: [{ url: "/logo_sombrerito_check.png", type: "image/png" }],
   },
 };

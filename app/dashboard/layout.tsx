@@ -24,19 +24,24 @@ function limaDayRangeUtcIso(now: Date) {
 
 const getTopbarNotifications = unstable_cache(
   async () => {
-    const supabase = getSupabaseAdminClient();
-    const { startIso, endIso } = limaDayRangeUtcIso(new Date());
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { startIso, endIso } = limaDayRangeUtcIso(new Date());
 
-    const [{ count: newUsersToday }, { data: todayMessages }] = await Promise.all([
-      supabase.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", startIso).lt("created_at", endIso),
-      supabase
-        .from("n8n_chatwhatsapp_histories")
-        .select("message,created_at")
-        .gte("created_at", startIso)
-        .lt("created_at", endIso)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-    ]);
+      const [{ count: newUsersToday }, { data: todayMessages }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", startIso)
+          .lt("created_at", endIso),
+        supabase
+          .from("n8n_chatwhatsapp_histories")
+          .select("message,created_at")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: false })
+          .limit(5000),
+      ]);
 
     const bannedExact = new Set(
       [
@@ -106,10 +111,13 @@ const getTopbarNotifications = unstable_cache(
       if (!topQuestionToday || v.count > topQuestionToday.count) topQuestionToday = { text: v.text, count: v.count };
     }
 
-    return { newUsersToday: newUsersToday ?? 0, topQuestionToday };
+      return { newUsersToday: newUsersToday ?? 0, topQuestionToday };
+    } catch {
+      return { newUsersToday: 0, topQuestionToday: null };
+    }
   },
   ["topbar-notifications-v1"],
-  { revalidate: 30 },
+  { revalidate: 30, tags: ["topbar-notifications"] },
 );
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

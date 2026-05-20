@@ -30,7 +30,7 @@ const getUsersPageData = unstable_cache(
     return { rows, total, admins, activos, nuevos };
   },
   ["users-page-data"],
-  { revalidate: 30 },
+  { revalidate: 30, tags: ["users-page-data"] },
 );
 
 export default async function UsuariosPage() {
