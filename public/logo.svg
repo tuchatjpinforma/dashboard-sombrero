@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" fill="none"/>
+  <path d="M64 92c36-34 92-34 128 0v44H64V92z" fill="none" stroke="#CC0000" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M40 136c40 22 136 22 176 0" fill="none" stroke="#CC0000" stroke-width="10" stroke-linecap="round"/>
+  <path d="M70 176c0-12 12-22 26-22h64c14 0 26 10 26 22" fill="none" stroke="#CC0000" stroke-width="10" stroke-linecap="round"/>
+  <path d="M56 196h96" fill="none" stroke="#22C55E" stroke-width="12" stroke-linecap="round" transform="translate(64,0)"/>
+  <path d="M176 174l18 18 38-38" fill="none" stroke="#22C55E" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="40" y="214" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="36" font-weight="800" fill="#22C55E">Sombrerito</text>
+  <text x="66" y="248" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="44" font-weight="800" fill="#CC0000">Check</text>
+</svg>
+
