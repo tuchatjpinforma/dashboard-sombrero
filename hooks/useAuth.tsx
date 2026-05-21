@@ -12,6 +12,7 @@ type AuthContextValue = {
   loading: boolean;
   user: User | null;
   profile: Profile | null;
+  signingOut: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   const [supabase, setSupabase] = useState<ReturnType<typeof getSupabaseBrowserClient> | null>(null);
 
@@ -37,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       return;
     }
+
+    setSigningOut(false);
 
     try {
       const { data } = await supabase
@@ -61,6 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
+    setLoading(true);
+    setSigningOut(true);
     await supabase.auth.signOut();
     resetSupabaseBrowserClient();
     setUser(null);
@@ -84,7 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
 
     const { data } = supabase.auth.onAuthStateChange(() => {
-      refreshProfile().catch(() => {});
+      setLoading(true);
+      refreshProfile()
+        .catch(() => {})
+        .finally(() => setLoading(false));
     });
 
     return () => {
@@ -97,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     user,
     profile,
+    signingOut,
     refreshProfile,
     signOut,
   };

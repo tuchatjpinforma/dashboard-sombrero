@@ -16,8 +16,8 @@ const items = [
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const { profile } = useAuth();
-  const isAdmin = profile?.role === "admin";
+  const { profile, user, loading, signingOut } = useAuth();
+  const isAdmin = loading || signingOut ? true : profile?.role === "admin";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface md:hidden">
@@ -44,4 +44,3 @@ export default function MobileNav() {
     </nav>
   );
 }
-

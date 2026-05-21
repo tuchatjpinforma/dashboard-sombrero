@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LogOut, Menu, RefreshCw } from "lucide-react";
+import { Bell, LogOut, Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,7 @@ export default function Topbar({
   onMenu?: () => void;
   notifications?: {
     newUsersToday: number;
-    topQuestionToday: { text: string; count: number } | null;
+    topFaqToday: { categoria: string; cantidad: number } | null;
   };
 }) {
   const router = useRouter();
@@ -58,8 +58,8 @@ export default function Topbar({
   }, [openNotif]);
 
   const newUsersToday = notifications?.newUsersToday ?? 0;
-  const topQ = notifications?.topQuestionToday ?? null;
-  const hasNotif = newUsersToday > 0 || !!topQ;
+  const topFaq = notifications?.topFaqToday ?? null;
+  const hasNotif = newUsersToday > 0 || !!topFaq;
 
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur">
@@ -99,23 +99,10 @@ export default function Topbar({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-3">
                     <span>Pregunta más repetida</span>
-                    <span className="tabular-nums font-semibold text-text-primary">{topQ?.count ?? 0}</span>
+                    <span className="tabular-nums font-semibold text-text-primary">{topFaq?.cantidad ?? 0}</span>
                   </div>
-                  <div className="text-xs text-text-secondary">{topQ?.text ? `“${topQ.text}”` : "—"}</div>
+                  <div className="text-xs text-text-secondary">{topFaq?.categoria ? topFaq.categoria : "—"}</div>
                 </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-input px-3 py-2 text-sm font-medium text-text-secondary hover:bg-black/5"
-                  onClick={() => {
-                    setOpenNotif(false);
-                    router.refresh();
-                  }}
-                >
-                  <RefreshCw size={16} />
-                  Actualizar
-                </button>
               </div>
             </div>
           ) : null}
@@ -131,17 +118,6 @@ export default function Topbar({
           </button>
           {openUserMenu ? (
             <div className="absolute right-0 top-11 z-50 w-52 rounded-card border border-border bg-surface p-2 shadow-card">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-input px-3 py-2 text-sm font-medium text-text-secondary hover:bg-black/5"
-                onClick={() => {
-                  setOpenUserMenu(false);
-                  router.refresh();
-                }}
-              >
-                <RefreshCw size={16} />
-                Actualizar
-              </button>
               <button
                 type="button"
                 className="flex w-full items-center gap-2 rounded-input px-3 py-2 text-sm font-medium text-text-secondary hover:bg-black/5"

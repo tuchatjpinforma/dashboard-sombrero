@@ -76,6 +76,31 @@ const getTopbarNotifications = unstable_cache(
       return normalizeText(raw.replace(/<\/?audio>|\n/g, " ").trim());
     };
 
+    const categorize = (pregunta: string) => {
+      const p = pregunta.toLowerCase();
+      if (/(cuba|venezuela|nicaragua|bolivia|dictadura|régimen|regimen|chavez|maduro|castrismo)/i.test(p))
+        return "Venezuela / Dictadura";
+      if (
+        /(expropiar|expropiación|expropiacion|confiscar|quitarme|quitar.*casa|quitar.*auto|quitar.*ahorro|quitarán|quitaran|se van a quedar)/i.test(
+          p,
+        )
+      )
+        return "Expropiaciones";
+      if (/(ahorro|banco|dinero|plata|dólar|dolar|sueldo|pensión|pension|afp|ahorros)/i.test(p)) return "Ahorros / Dinero";
+      if (/(comunismo|comunista|socialismo|socialista|marxismo|marxista|izquierda radical)/i.test(p)) return "Comunismo / Socialismo";
+      if (/(propiedad|casa|terreno|inmueble|negocio|empresa|mype)/i.test(p)) return "Propiedad / Negocios";
+      if (/(antauro|humala|ollanta|movadef|sendero|terroris|terruco|terruqueo)/i.test(p)) return "Terrorismo / Terruqueo";
+      if (/(roberto sánchez|roberto sanchez|candidato|quién es|quien es)/i.test(p)) return "Roberto Sánchez";
+      if (/(constitución|constitucion|asamblea|nueva constitución|nueva constitucion|carta magna)/i.test(p)) return "Nueva Constitución";
+      if (/(salud|hospital|essalud|médico|medico|medicamento|seguro)/i.test(p)) return "Salud";
+      if (/(educación|educacion|colegio|universidad|escuela|profesor|maestro)/i.test(p)) return "Educación";
+      if (/(seguridad|crimen|delincuencia|robo|policia|policía)/i.test(p)) return "Seguridad Ciudadana";
+      if (/(votar|voto|viciado|elección|eleccion|elecciones|segunda vuelta)/i.test(p)) return "Elecciones / Voto";
+      if (/(keiko|fujimori|señora k|senora k|fujimorismo|naranja|fuerza popular)/i.test(p)) return "Keiko / Fujimorismo";
+      if (/(agua|río|rio|minería|mineria|medio ambiente|recursos naturales)/i.test(p)) return "Agua / Recursos";
+      return "Otras consultas";
+    };
+
     const normKey = (text: string) =>
       normalizeText(text)
         .toLowerCase()
@@ -87,7 +112,8 @@ const getTopbarNotifications = unstable_cache(
         .trim()
         .slice(0, 180);
 
-    const freq = new Map<string, { text: string; count: number }>();
+    const freqByPregunta = new Map<string, { text: string; count: number }>();
+    const freqByCategoria = new Map<string, number>();
     ((todayMessages as any) ?? []).forEach((row: any) => {
       const msg = row?.message as any;
       if (msg?.type !== "human") return;
@@ -100,20 +126,27 @@ const getTopbarNotifications = unstable_cache(
       if (bannedExact.has(pregunta.toLowerCase().trim())) return;
       const key = normKey(pregunta);
       if (!key) return;
-      const cur = freq.get(key) ?? { text: pregunta.slice(0, 80), count: 0 };
+      const cur = freqByPregunta.get(key) ?? { text: pregunta.slice(0, 80), count: 0 };
       cur.count += 1;
       if (!cur.text) cur.text = pregunta.slice(0, 80);
-      freq.set(key, cur);
+      freqByPregunta.set(key, cur);
+
+      const categoria = categorize(pregunta);
+      freqByCategoria.set(categoria, (freqByCategoria.get(categoria) ?? 0) + 1);
     });
 
-    let topQuestionToday: { text: string; count: number } | null = null;
-    for (const v of freq.values()) {
-      if (!topQuestionToday || v.count > topQuestionToday.count) topQuestionToday = { text: v.text, count: v.count };
+    let topFaqToday: { categoria: string; cantidad: number } | null = null;
+    for (const [categoria, cantidad] of freqByCategoria.entries()) {
+      if (categoria === "Otras consultas") continue;
+      if (!topFaqToday || cantidad > topFaqToday.cantidad) topFaqToday = { categoria, cantidad };
+    }
+    if (!topFaqToday && freqByCategoria.has("Otras consultas")) {
+      topFaqToday = { categoria: "Otras consultas", cantidad: freqByCategoria.get("Otras consultas") ?? 0 };
     }
 
-      return { newUsersToday: newUsersToday ?? 0, topQuestionToday };
+      return { newUsersToday: newUsersToday ?? 0, topFaqToday };
     } catch {
-      return { newUsersToday: 0, topQuestionToday: null };
+      return { newUsersToday: 0, topFaqToday: null };
     }
   },
   ["topbar-notifications-v1"],

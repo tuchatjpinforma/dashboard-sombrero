@@ -8,10 +8,11 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   error?: string;
   icon?: ReactNode;
+  rightElement?: ReactNode;
 };
 
 const Input = forwardRef<HTMLInputElement, Props>(function Input(
-  { className, label, error, icon, id, ...props },
+  { className, label, error, icon, rightElement, id, ...props },
   ref,
 ) {
   const inputId = id ?? props.name;
@@ -28,12 +29,16 @@ const Input = forwardRef<HTMLInputElement, Props>(function Input(
             {icon}
           </div>
         ) : null}
+        {rightElement ? (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>
+        ) : null}
         <input
           ref={ref}
           id={inputId}
           className={cn(
             "h-12 w-full rounded-input border border-border bg-surface px-4 text-sm text-text-primary outline-none transition-all placeholder:text-text-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/30",
             icon ? "pl-12" : "",
+            rightElement ? "pr-12" : "",
             error ? "border-primary focus:border-primary focus:ring-primary/40" : "",
             className,
           )}

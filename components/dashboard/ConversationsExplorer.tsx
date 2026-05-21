@@ -112,7 +112,26 @@ export default function ConversationsExplorer({ sessions }: { sessions: SessionR
     return history.map((h) => {
       const m = h.message;
       const type = m?.type === "ai" ? "ai" : m?.type === "human" ? "human" : "unknown";
-      const content = typeof m?.content === "string" ? m.content : "";
+      const rawContent = typeof m?.content === "string" ? m.content : "";
+
+      const normalizeText = (input: unknown) =>
+        String(input ?? "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const extractPreguntaLimpia = (content: string) => {
+        const match =
+          content.match(/\*\*Mensaje.*?:\*\*\s*([\s\S]*?)(?:\n\n---|\n---\n|$)/i) ??
+          content.match(/-\s*\*\*Mensaje.*?:\*\*\s*(.*)$/im);
+        const raw = match?.[1] ? String(match[1]) : "";
+        return normalizeText(raw.replace(/<\/?audio>|\n/g, " ").trim());
+      };
+
+      const content =
+        type === "human" && rawContent.includes("**Mensaje")
+          ? extractPreguntaLimpia(rawContent)
+          : normalizeText(rawContent);
+
       return { id: h.id, type, content, created_at: h.created_at };
     });
   }, [history]);
@@ -181,7 +200,7 @@ export default function ConversationsExplorer({ sessions }: { sessions: SessionR
             ? `Sesión ${formatPhoneMasked(selected.session_id.includes("@") ? extractNumber(selected.session_id) : selected.session_id)}`
             : "Sesión"
         }
-        subtitle="Historial de WhatsApp (n8n)"
+        subtitle="Historial de WhatsApp"
         icon={<span className="text-lg">💬</span>}
         onClose={() => {
           setSelected(null);

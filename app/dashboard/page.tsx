@@ -24,6 +24,21 @@ function dayRangeUtc(date: Date) {
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
+function limaDayRangeUtcIso(now: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const m = parts.find((p) => p.type === "month")?.value ?? "01";
+  const d = parts.find((p) => p.type === "day")?.value ?? "01";
+  const start = new Date(`${y}-${m}-${d}T05:00:00.000Z`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1000);
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
 function normalizeText(input: unknown) {
   return String(input ?? "")
     .replace(/\s+/g, " ")
@@ -44,6 +59,7 @@ const getDashboardData = unstable_cache(
     const supabase = getSupabaseAdminClient();
     const today = new Date(`${dayKey}T12:00:00.000Z`);
     const { startIso: hoyInicio, endIso: hoyFin } = dayRangeUtc(today);
+    const { startIso: limaInicio, endIso: limaFin } = limaDayRangeUtcIso(new Date());
 
     const extractMessageText = (message: any): string => {
       const preferredKeys = [
@@ -121,8 +137,8 @@ const getDashboardData = unstable_cache(
     const { data: activosHoyData } = await supabase
       .from("n8n_chatwhatsapp_histories")
       .select("session_id")
-      .gte("created_at", hoyInicio)
-      .lt("created_at", hoyFin);
+      .gte("created_at", limaInicio)
+      .lt("created_at", limaFin);
     const activosHoy = new Set(((activosHoyData as any) ?? []).map((r: any) => String(r.session_id))).size;
 
     const { data: ultimasRaw } = await supabase
@@ -133,6 +149,16 @@ const getDashboardData = unstable_cache(
 
     const latestBySession = new Map<string, { session_id: string; created_at: string | null; preview: string }>();
     const previewBySession = new Map<string, string>();
+    const fallbackBySession = new Map<string, string>();
+
+    const extractPreguntaLimpia = (content: string) => {
+      const m =
+        content.match(/\*\*Mensaje.*?:\*\*\s*([\s\S]*?)(?:\n\n---|\n---\n|$)/i) ??
+        content.match(/-\s*\*\*Mensaje.*?:\*\*\s*(.*)$/im);
+      const raw = m?.[1] ? String(m[1]) : "";
+      const cleaned = normalizeText(raw.replace(/<\/?audio>|\n/g, " ").trim());
+      return cleaned;
+    };
 
     ((ultimasRaw as any) ?? []).forEach((row: any) => {
       const sessionId = row?.session_id ? String(row.session_id) : "";
@@ -143,13 +169,21 @@ const getDashboardData = unstable_cache(
 
       const m = row?.message as any;
       const content = extractMessageText(m);
-      if (!previewBySession.has(sessionId) && content && !isPlaceholderText(content)) {
-        previewBySession.set(sessionId, content.slice(0, 180));
+      if (!fallbackBySession.has(sessionId) && content && !isPlaceholderText(content)) {
+        fallbackBySession.set(sessionId, content.slice(0, 180));
+      }
+
+      if (!previewBySession.has(sessionId) && m?.type === "human") {
+        const humanContent = typeof m?.content === "string" ? m.content : "";
+        const extracted = humanContent ? extractPreguntaLimpia(humanContent) : "";
+        if (extracted && !isPlaceholderText(extracted)) {
+          previewBySession.set(sessionId, extracted.slice(0, 180));
+        }
       }
     });
 
     for (const [sessionId, value] of latestBySession.entries()) {
-      value.preview = previewBySession.get(sessionId) ?? "";
+      value.preview = previewBySession.get(sessionId) ?? fallbackBySession.get(sessionId) ?? "";
     }
 
     const latestSessions = Array.from(latestBySession.values())
@@ -159,9 +193,13 @@ const getDashboardData = unstable_cache(
     const { data: mensajesHoyRaw } = await supabase
       .from("n8n_chatwhatsapp_histories")
       .select("session_id,created_at")
-      .gte("created_at", new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString())
+      .gte("created_at", new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: true })
-      .limit(20000);
+      .limit(50000);
+
+    const currentWindow = new Set<string>();
+    const prevWindow = new Set<string>();
+    const nowMs = Date.now();
 
     const dateKey = (iso: string) => iso.slice(0, 10);
     const daySessions = new Map<string, Set<string>>();
@@ -169,6 +207,12 @@ const getDashboardData = unstable_cache(
       const createdAt = m?.created_at ? String(m.created_at) : "";
       const sessionId = m?.session_id ? String(m.session_id) : "";
       if (!createdAt || !sessionId) return;
+      const createdMs = Date.parse(createdAt);
+      if (!Number.isNaN(createdMs)) {
+        const dayDiff = Math.floor((nowMs - createdMs) / (24 * 60 * 60 * 1000));
+        if (dayDiff >= 0 && dayDiff <= 2) currentWindow.add(sessionId);
+        if (dayDiff >= 3 && dayDiff <= 5) prevWindow.add(sessionId);
+      }
       const key = dateKey(createdAt);
       const set = daySessions.get(key) ?? new Set<string>();
       set.add(sessionId);
@@ -189,12 +233,15 @@ const getDashboardData = unstable_cache(
     });
 
     const intentosHoy = (intentosWhatsappHoy ?? 0) + (intentosTelegramHoy ?? 0);
+    const weekGrowthPct =
+      prevWindow.size > 0 ? Math.round(((currentWindow.size - prevWindow.size) / prevWindow.size) * 100) : null;
 
     return {
       totalConversaciones,
       activosHoy,
       totalBloqueados: totalBloqueados ?? 0,
       intentosHoy,
+      weekGrowthPct,
       bloqueadosNumbers,
       latestSessions,
       volumeData,
@@ -321,6 +368,12 @@ export default async function DashboardPage() {
   const faqCategories = await getFaqCategories();
   const bloqueadosSet = new Set<string>((data as any).bloqueadosNumbers ?? []);
 
+  const pct = (data as any).weekGrowthPct as number | null;
+  const pctClass =
+    typeof pct === "number" && pct < 0
+      ? "bg-red-50 text-primary"
+      : "bg-green-100 text-green-800";
+
   return (
     <div className="relative">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -331,8 +384,8 @@ export default async function DashboardPage() {
           icon={<TrendingUp size={18} />}
           iconColorClassName="text-secondary"
           rightElement={
-            <span className="inline-flex items-center gap-1 rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
-              <TrendingUp size={14} /> +12%
+            <span className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-semibold ${pctClass}`}>
+              <TrendingUp size={14} /> {typeof pct === "number" ? `${pct > 0 ? "+" : ""}${pct}%` : "—"}
             </span>
           }
         />

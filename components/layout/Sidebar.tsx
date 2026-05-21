@@ -1,18 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Ban,
-  LayoutDashboard,
-  LogOut,
-  MessageSquare,
-  Settings,
-  Users,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { Ban, LayoutDashboard, LogOut, MessageSquare, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -24,20 +15,13 @@ const navItems = [
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut, profile, user } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const { signOut, profile, user, loading, signingOut } = useAuth();
 
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem("sc_sidebar") === "1");
-    } catch {}
-  }, []);
-
-  const canSeeAdmin = profile?.role === "admin";
-  const canShowLinks = !!user;
+  const canSeeAdmin = loading || signingOut ? true : profile?.role === "admin";
+  const canShowLinks = loading || signingOut ? true : !!user;
   const items = useMemo(
     () =>
       navItems.filter((i) => {
@@ -46,16 +30,6 @@ export default function Sidebar() {
       }),
     [canSeeAdmin, canShowLinks],
   );
-
-  const toggleCollapsed = () => {
-    setCollapsed((v) => {
-      const next = !v;
-      try {
-        window.localStorage.setItem("sc_sidebar", next ? "1" : "0");
-      } catch {}
-      return next;
-    });
-  };
 
   return (
     <aside
@@ -81,22 +55,6 @@ export default function Sidebar() {
             </div>
           ) : null}
         </Link>
-        <button
-          type="button"
-          className={cn("rounded-input p-2 text-text-secondary hover:bg-black/5", collapsed ? "hidden" : "")}
-          onClick={toggleCollapsed}
-          aria-label="Colapsar sidebar"
-        >
-          <PanelLeftClose size={18} />
-        </button>
-        <button
-          type="button"
-          className={cn("rounded-input p-2 text-text-secondary hover:bg-black/5", collapsed ? "" : "hidden")}
-          onClick={toggleCollapsed}
-          aria-label="Expandir sidebar"
-        >
-          <PanelLeftOpen size={18} />
-        </button>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-2">

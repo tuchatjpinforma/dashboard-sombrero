@@ -19,11 +19,20 @@ const getConversationsData = unstable_cache(
 
     const bySession = new Map<string, { session_id: string; last_at: string | null; preview: string }>();
     const previewBySession = new Map<string, string>();
+    const fallbackBySession = new Map<string, string>();
 
     const normalizeText = (input: unknown) =>
       String(input ?? "")
         .replace(/\s+/g, " ")
         .trim();
+
+    const extractPreguntaLimpia = (content: string) => {
+      const m =
+        content.match(/\*\*Mensaje.*?:\*\*\s*([\s\S]*?)(?:\n\n---|\n---\n|$)/i) ??
+        content.match(/-\s*\*\*Mensaje.*?:\*\*\s*(.*)$/im);
+      const raw = m?.[1] ? String(m[1]) : "";
+      return normalizeText(raw.replace(/<\/?audio>|\n/g, " ").trim());
+    };
 
     ((ultimas as any) ?? []).forEach((row: any) => {
       const sessionId = row?.session_id ? String(row.session_id) : "";
@@ -33,13 +42,17 @@ const getConversationsData = unstable_cache(
       }
       const m = row?.message;
       const content = normalizeText(m?.content);
+      if (!fallbackBySession.has(sessionId) && content) {
+        fallbackBySession.set(sessionId, content.slice(0, 180));
+      }
       if (!previewBySession.has(sessionId) && m?.type === "human" && content) {
-        previewBySession.set(sessionId, content.slice(0, 180));
+        const extracted = extractPreguntaLimpia(content);
+        if (extracted) previewBySession.set(sessionId, extracted.slice(0, 180));
       }
     });
 
     for (const [sessionId, v] of bySession.entries()) {
-      v.preview = previewBySession.get(sessionId) ?? "";
+      v.preview = previewBySession.get(sessionId) ?? fallbackBySession.get(sessionId) ?? "";
     }
 
     const sessions = Array.from(bySession.values())

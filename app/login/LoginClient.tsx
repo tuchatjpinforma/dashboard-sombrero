@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Lock, Mail, LogIn } from "lucide-react";
+import { Lock, Mail, LogIn, Eye, EyeOff } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { getSupabaseBrowserClient, resetSupabaseBrowserClient } from "@/lib/supabase";
@@ -25,6 +25,7 @@ export default function LoginClient() {
   const nextPath = searchParams.get("next") ?? "/dashboard";
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const defaultValues = useMemo<FormValues>(
     () => ({
@@ -114,10 +115,20 @@ export default function LoginClient() {
             <Input
               label="Contraseña"
               placeholder="••••••••"
-              type="password"
+              type={showPassword ? "text" : "password"}
               icon={<Lock size={18} />}
               error={errors.password?.message}
               {...register("password")}
+              rightElement={
+                <button
+                  type="button"
+                  className="text-text-secondary hover:text-text-primary"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
             />
 
             <div className="flex items-center justify-between">

@@ -80,3 +80,23 @@ export async function deleteUserAction(input: { id: string }) {
   revalidateTag("users-page-data");
   revalidateTag("topbar-notifications");
 }
+
+export async function updateUserAction(input: { id: string; fullName: string; role: "admin" | "user"; is_active: boolean }) {
+  const supabase = getAdminClient();
+
+  const { error: updateProfileError } = await supabase
+    .from("profiles")
+    .update({ full_name: input.fullName, role: input.role, is_active: input.is_active })
+    .eq("id", input.id);
+
+  if (updateProfileError) throw new Error(updateProfileError.message);
+
+  const { error: updateAuthError } = await supabase.auth.admin.updateUserById(input.id, {
+    user_metadata: { full_name: input.fullName },
+  });
+
+  if (updateAuthError) throw new Error(updateAuthError.message);
+
+  revalidateTag("users-page-data");
+  revalidateTag("topbar-notifications");
+}
